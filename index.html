@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo do Ping Pong</title>
+    <style>
+        body {
+            background-color: black;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            height: 100vh;
+            color: white;
+            font-family: sans-serif;
+        }
+
+        canvas {
+            border: 15px solid blue;
+            background-color: brown;
+        }
+
+        #menu {
+            margin-bottom: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="menu">
+        <label>Dificuldade: </label>
+        <select id="dificuldade">
+            <option value="0.05">Fácil</option>
+            <option value="0.1" selected>Médio</option>
+            <option value="0.2">Difícil</option>
+        </select>
+        <button onclick="iniciarJogo()">Iniciar</button>
+        <h3 id="placar">Jogador: 0 | CPU: 0</h3>
+        <h2 id="vencedor"></h2>
+    </div>
+
+    <canvas id="telaJogo" width="400" height="400">Seu navegador não funciona o Canvas no HTML5.</canvas>
+
+    <audio id="somPonto" src="https://www.soundjay.com/button/beep-07.wav"></audio>
+    <audio id="somColisao" src="https://www.soundjay.com/button/beep-10.wav"></audio>
+</body>
+
+<script>
+    const tela = document.getElementById("telaJogo");
+    const contexto = tela.getContext("2d");
+
+    const somPonto = document.getElementById("somPonto");
+    const somColisao = document.getElementById("somColisao");
+
+    const alturaRaquete = 80;
+    const larguraRaquete = 10;
+    const raioBola = 7;
+
+    let jogador1 = tela.height / 2 - alturaRaquete / 2;
+    let cpu = tela.height / 2 - alturaRaquete / 2;
+    let bolaY = tela.width / 2;
+    let bolaX = tela.height / 2;
+    let velocidadeBolaX = 4;
+    let velocidadeBolaY = 4;
+
+    let dificuldade = 0.1;
+    let pontosJogador = 0;
+    let pontosCPU = 0;
+    let jogoAtivo = true;
+
+    document.getElementById("dificuldade").addEventListener("change", (e) => {
+        dificuldade = parseFloat(e.target.value);
+    });
+
+    function iniciarJogo() {
+        pontosJogador = 0;
+        pontosCPU = 0;
+        atualizarPlacar();
+        jogoAtivo = true;
+        document.getElementById("vencedor").innerText = "";
+        reiniciarBola();
+    }
+
+    document.addEventListener('mousemove', (evento) => {
+        let retangulo = tela.getBoundingClientRect();
+        jogador1 = evento.clientY - retangulo.top - alturaRaquete / 2;
+
+        // Limita a raquete ao topo/base da tela
+        if (jogador1 < 0) jogador1 = 0;
+        if (jogador1 + alturaRaquete > tela.height) jogador1 = tela.height - alturaRaquete;
+    });
+
+    function raquete(x, y, largura, altura, cor) {
+        contexto.fillStyle = cor;
+        contexto.fillRect(x, y, largura, altura);
+    }
+
+    function bola(x, y, raio, cor) {
+        contexto.fillStyle = cor;
+        contexto.beginPath();
+        contexto.arc(x, y, raio, 0, Math.PI * 2);
+        contexto.fill();
+    }
+
+    function reiniciarBola() {
+        bolaX = tela.width / 2;
+        bolaY = tela.height / 2;
+        velocidadeBolaX = -velocidadeBolaX;
+        velocidadeBolaY = 4;
+    }
+
+    function desenharJogo() {
+        raquete(0, 0, tela.width, tela.height, "brown");
+
+        raquete(10, jogador1, larguraRaquete, alturaRaquete, "white");
+        raquete(tela.width - 20, cpu, larguraRaquete, alturaRaquete, "black");
+
+        bola(bolaX, bolaY, raioBola, 'green');
+    }
+
+    function atualizarPlacar() {
+        document.getElementById("placar").innerText = `Jogador: ${pontosJogador} | CPU: ${pontosCPU}`;
+    }
+
+    function atualizarJogo() {
+        if (!jogoAtivo) return;
+
+        bolaX += velocidadeBolaX;
+        bolaY += velocidadeBolaY;
+
+        if (bolaY + raioBola > tela.height || bolaY - raioBola < 0) {
+            velocidadeBolaY = -velocidadeBolaY;
+            somColisao.play();
+        }
+
+        cpu += ((bolaY - (cpu + alturaRaquete / 2))) * dificuldade;
+        if (cpu < 0) cpu = 0;
+        if (cpu + alturaRaquete > tela.height) cpu = tela.height - alturaRaquete;
+
+        if (bolaX - raioBola < 20 && bolaY > jogador1 && bolaY < jogador1 + alturaRaquete) {
+            velocidadeBolaX = -velocidadeBolaX;
+            somColisao.play();
+        }
+
+        if (bolaX + raioBola > tela.width - 20 && bolaY > cpu && bolaY < cpu + alturaRaquete) {
+            velocidadeBolaX = -velocidadeBolaX;
+            somColisao.play();
+        }
+
+        if (bolaX < 0) {
+            pontosCPU++;
+            somPonto.play();
+            atualizarPlacar();
+            reiniciarBola();
+        }
+
+        if (bolaX > tela.width) {
+            pontosJogador++;
+            somPonto.play();
+            atualizarPlacar();
+            reiniciarBola();
+        }
+
+        if (pontosJogador === 5 || pontosCPU === 5) {
+            jogoAtivo = false;
+            document.getElementById("vencedor").innerText =
+                pontosJogador === 5 ? "Você venceu!" : "A CPU venceu!";
+        }
+    }
+
+    function loopJogo() {
+        atualizarJogo();
+        desenharJogo();
+        requestAnimationFrame(loopJogo);
+    }
+
+    loopJogo();
+</script>
+
+</html>
